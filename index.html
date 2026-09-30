@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171827" />
+    <meta name="description" content="箱子探险队：适合孩子的推箱子益智冒险游戏。" />
+    <title>箱子探险队 · 推箱子益智游戏</title>
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">▣</div>
+          <div><span class="eyebrow">复古益智 · 第 01 号冒险</span><h1>箱子探险队</h1></div>
+        </div>
+        <div class="top-actions">
+          <span class="progress-pill" id="progress-pill">已解锁 1 / 36</span>
+          <button class="button ghost" id="open-levels" type="button">关卡地图</button>
+        </div>
+      </header>
+
+      <main class="main-layout">
+        <aside class="story-card">
+          <div class="story-illustration" aria-hidden="true">
+            <div class="sun"></div><div class="mountain mountain-back"></div><div class="mountain mountain-front"></div>
+            <div class="trail"></div><div class="mini-box">✕</div>
+          </div>
+          <div class="chapter-badge" id="chapter-badge">第一章 · 森林起点</div>
+          <h2 id="level-title">第 1 关</h2>
+          <p class="story-copy" id="level-description">把所有箱子推到青色目标格上，开启今天的冒险。</p>
+          <div class="mission-divider"></div>
+          <div class="mission-heading">本关任务 <span>◆</span></div>
+          <p class="mission-copy">让所有箱子抵达目标格。先看清路线，再决定每一步。</p>
+          <div class="stat-row">
+            <div><span>步数</span><strong id="moves">0</strong></div>
+            <div><span>推动</span><strong id="pushes">0</strong></div>
+            <div><span>箱子</span><strong id="box-count">1</strong></div>
+          </div>
+          <button class="button primary full" id="open-levels-side" type="button">选择其他关卡 <span>↗</span></button>
+        </aside>
+
+        <section class="play-area" aria-label="游戏区域">
+          <div class="board-header"><div><span class="live-dot"></span><span id="board-label">森林遗迹 · 第 1 关</span></div><span id="difficulty">新手试炼</span></div>
+          <div class="board-frame"><div id="game-board" aria-label="推箱子棋盘"></div><div class="board-loading" id="board-loading" hidden>正在准备冒险地图…</div></div>
+          <div class="tile-legend" aria-label="棋盘图例"><span><i class="tile floor"></i>地板</span><span><i class="tile wall"></i>墙壁</span><span><i class="tile crate"></i>箱子</span><span><i class="tile target"></i>目标</span></div>
+          <div class="toolbar">
+            <div class="tool-group">
+              <button class="tool-button" id="undo" type="button" title="撤销上一步"><span>↶</span> 撤销</button>
+              <button class="tool-button" id="restart" type="button" title="重新开始本关"><span>⟳</span> 重开</button>
+            </div>
+            <button class="tool-button hint-button" id="hint" type="button"><span>✧</span> 提示下一步</button>
+          </div>
+          <div class="mobile-controls" aria-label="移动方向">
+            <div class="direction-pad">
+              <button data-direction="up" aria-label="向上移动">▲</button>
+              <div class="direction-bottom"><button data-direction="left" aria-label="向左移动">◀</button><button data-direction="down" aria-label="向下移动">▼</button><button data-direction="right" aria-label="向右移动">▶</button></div>
+            </div>
+            <p>轻点方向键<br />推动箱子前进</p>
+          </div>
+        </section>
+
+        <aside class="tips-card">
+          <div class="tips-icon">?</div>
+          <h3>探险小贴士</h3>
+          <p>箱子只能推，不能拉。试着先找到通往目标格的路线。</p>
+          <div class="tip-line"></div>
+          <div class="keyboard-guide"><span>电脑操作</span><div><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></div><small>也可以使用 W A S D</small></div>
+          <div class="tip-line"></div>
+          <p class="tips-foot">走错了？使用「撤销」再试一次，慢慢想也没关系。</p>
+        </aside>
+      </main>
+      <footer>每一步都算数，每一次尝试都是新发现。 <span>◆</span> 箱子探险队</footer>
+    </div>
+
+    <dialog id="level-dialog" class="level-dialog">
+      <div class="dialog-heading"><div><span class="eyebrow">冒险地图 / 01—36</span><h2>选择关卡</h2></div><button id="close-levels" class="icon-button" type="button" aria-label="关闭">✕</button></div>
+      <p class="dialog-subtitle">完成当前关卡，解锁下一段旅程。</p>
+      <div id="level-grid" class="level-grid"></div>
+      <button id="endless-button" class="button primary full" type="button" hidden>进入无尽探险 →</button>
+    </dialog>
+
+    <div id="win-overlay" class="win-overlay" hidden>
+      <div class="win-card"><div class="win-stars">◆ ★ ◆</div><span class="eyebrow">任务完成</span><h2>太棒了，过关！</h2><p id="win-copy">你找到了通往下一关的路。</p><div class="win-actions"><button id="replay-level" class="button ghost-dark" type="button">再玩一次</button><button id="next-level" class="button primary" type="button">下一关 →</button></div></div>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
