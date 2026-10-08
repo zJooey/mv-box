@@ -1,144 +1,82 @@
-import { createState, neighbor } from './core.js';
-import { solve } from './solver.js';
+import levels from './levels.json' with { type: 'json' };
+import { endlessTemplate, endlessTemplateCount } from './endless-templates.js';
+import { createState, move, neighbor } from './core.js';
+import { solve, solveRestricted } from './solver.js';
 
 const directions = ['up', 'right', 'down', 'left'];
-const opposite = { up: 'down', right: 'left', down: 'up', left: 'right' };
-
 function randomSource(seed) {
-  let value = seed >>> 0 || 1;
-  return () => {
-    value ^= value << 13;
-    value ^= value >>> 17;
-    value ^= value << 5;
-    return (value >>> 0) / 4294967296;
-  };
-}
-
-function choose(list, random) {
-  return list[Math.floor(random() * list.length)];
-}
-
-function connected(rows) {
-  const size = rows.length;
-  const floor = [];
-  rows.forEach((row, y) => row.forEach((tile, x) => {
-    if (tile !== '#') floor.push(y * size + x);
-  }));
-  const seen = new Set([floor[0]]);
-  const queue = [floor[0]];
-  for (let head = 0; head < queue.length; head++) {
-    for (const direction of directions) {
-      const next = neighbor(queue[head], direction, size, size);
-      if (next === -1 || rows[Math.floor(next / size)][next % size] === '#' || seen.has(next)) continue;
-      seen.add(next);
-      queue.push(next);
-    }
-  }
-  return seen.size === floor.length;
-}
-
-function makeRoom(id, random) {
-  const size = id <= 12 ? 7 : 9;
-  const rows = Array.from({ length: size }, (_, y) => Array.from({ length: size }, (_, x) =>
-    x === 0 || y === 0 || x === size - 1 || y === size - 1 ? '#' : '.'));
-  const wallCount = id <= 2 ? 3 : id <= 12 ? 4 + Math.floor(random() * 3) : id <= 24 ? 7 + Math.floor(random() * 4) : 8 + Math.floor(random() * 4);
-  let placed = 0;
-  // 每放一块墙都检查通道连通性，避免生成无法进入的区域。
-  for (let attempt = 0; placed < wallCount && attempt < 150; attempt++) {
-    const x = 1 + Math.floor(random() * (size - 2));
-    const y = 1 + Math.floor(random() * (size - 2));
-    if (rows[y][x] === '#') continue;
-    rows[y][x] = '#';
-    if (connected(rows)) placed++;
-    else rows[y][x] = '.';
-  }
-  return rows;
+  let value = seed || 1;
+  return () => { value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return (value >>> 0) / 4294967296; };
 }
 
 function reachable(level, player, boxes) {
-  const walls = new Set(level.walls);
-  const occupied = new Set(boxes);
-  const seen = new Set([player]);
-  const queue = [player];
-  for (let head = 0; head < queue.length; head++) {
-    for (const direction of directions) {
-      const next = neighbor(queue[head], direction, level.width, level.height);
-      if (next === -1 || walls.has(next) || occupied.has(next) || seen.has(next)) continue;
-      seen.add(next);
-      queue.push(next);
-    }
+  const walls = new Set(level.walls), occupied = new Set(boxes), seen = new Set([player]), queue = [player];
+  for (let head = 0; head < queue.length; head++) for (const direction of directions) {
+    const next = neighbor(queue[head], direction, level.width, level.height);
+    if (next === -1 || walls.has(next) || occupied.has(next) || seen.has(next)) continue;
+    seen.add(next); queue.push(next);
   }
   return seen;
 }
 
-function makeCandidate(id, seed, count, random) {
-  const rows = makeRoom(id, random);
-  const width = rows[0].length;
-  const height = rows.length;
-  const walls = [];
-  const floor = [];
-  const inner = [];
-  rows.forEach((row, y) => [...row].forEach((tile, x) => {
-    const position = y * width + x;
-    if (tile === '#') walls.push(position);
-    else {
-      floor.push(position);
-      if (x >= 2 && x <= width - 3 && y >= 2 && y <= height - 3) inner.push(position);
-    }
-  }));
-  const wallSet = new Set(walls);
-  // 目标格至少留有一条可反向拉箱的直线，避免箱子一开始就无法离开目标。
-  const goalCandidates = inner.filter(position => directions.some(direction => {
-    const previous = neighbor(position, opposite[direction], width, height);
-    const standing = neighbor(previous, opposite[direction], width, height);
-    return previous !== -1 && standing !== -1 && !wallSet.has(previous) && !wallSet.has(standing);
-  }));
-  if (goalCandidates.length < count) return null;
-  const goals = [];
-  while (goals.length < count) {
-    const position = choose(goalCandidates, random);
-    if (!goals.includes(position)) goals.push(position);
-  }
-  const boxes = [...goals];
-  let player = choose(floor.filter(position => !boxes.includes(position)), random);
-  const level = { id, width, height, walls, goals: goals.sort((a, b) => a - b), boxes, player, seed, minPushes: 0 };
+function orient(level, orientation) {
+  const turns = orientation % 4;
+  const transform = position => {
+    let x = position % level.width, y = Math.floor(position / level.width), width = level.width, height = level.height;
+    if (orientation >= 4) x = width - 1 - x;
+    for (let turn = 0; turn < turns; turn++) { [x, y] = [height - 1 - y, x]; [width, height] = [height, width]; }
+    return y * width + x;
+  };
+  const list = values => values.map(transform).sort((a, b) => a - b);
+  return { ...level, width: turns % 2 ? level.height : level.width, height: turns % 2 ? level.width : level.height,
+    walls: list(level.walls), goals: list(level.goals), boxes: list(level.boxes), player: transform(level.player) };
+}
 
-  // 从箱子已经归位的局面反向拉动，保证每一步都能逆向推回终点。
-  const pulls = 4 + count * 8 + Math.floor(random() * 10);
-  const pullCounts = Array(count).fill(0);
-  const seenLayouts = new Set([[...boxes].sort((a, b) => a - b).join(',')]);
-  for (let step = 0; step < pulls; step++) {
-    const access = reachable(level, player, boxes);
-    const options = [];
-    for (let index = 0; index < boxes.length; index++) {
-      for (const direction of directions) {
-        const previous = neighbor(boxes[index], opposite[direction], width, height);
-        if (previous === -1) continue;
-        const standing = neighbor(previous, opposite[direction], width, height);
-        const layout = boxes.map((box, boxIndex) => boxIndex === index ? previous : box).sort((a, b) => a - b).join(',');
-        if (access.has(previous) && standing !== -1 && !walls.includes(standing) && !boxes.includes(standing) && !seenLayouts.has(layout)) {
-          options.push({ index, previous, standing, layout });
-        }
+function reverseStart(level, random) {
+  const boxes = [...level.boxes], walls = new Set(level.walls), seen = new Set(), counts = boxes.map(() => 0);
+  let player = level.player;
+  // 从已经验关的机关起点反向拉动，保留窄口与回环；每个起点都有逆向推回的可解路线。
+  for (let step = 0, limit = 4 + Math.floor(random() * 9); step < limit; step++) {
+    const access = reachable(level, player, boxes), choices = [];
+    for (let index = 0; index < boxes.length; index++) for (const direction of directions) {
+      const previous = neighbor(boxes[index], direction, level.width, level.height);
+      const standing = neighbor(previous, direction, level.width, level.height);
+      const key = boxes.map((box, i) => i === index ? previous : box).sort((a, b) => a - b).join(',');
+      if (access.has(previous) && standing >= 0 && !walls.has(standing) && !boxes.includes(standing) && !seen.has(key)) {
+        choices.push({ index, previous, standing, key });
       }
     }
-    if (!options.length) break;
-    const leastPulled = Math.min(...options.map(option => pullCounts[option.index]));
-    const selection = choose(options.filter(option => pullCounts[option.index] === leastPulled), random);
-    boxes[selection.index] = selection.previous;
-    player = selection.standing;
-    pullCounts[selection.index]++;
-    seenLayouts.add(selection.layout);
+    if (!choices.length) break;
+    const least = Math.min(...choices.map(choice => counts[choice.index]));
+    const options = choices.filter(choice => counts[choice.index] === least);
+    const choice = options[Math.floor(random() * options.length)];
+    boxes[choice.index] = choice.previous; player = choice.standing; counts[choice.index]++; seen.add(choice.key);
   }
-  level.boxes = boxes.sort((a, b) => a - b);
-  level.player = player;
-  return level;
+  return { ...level, boxes: boxes.sort((a, b) => a - b), player };
+}
+
+function involved(level, answer) {
+  const identities = new Map(level.boxes.map((box, index) => [box, index])), phases = level.boxes.map(() => 0), pushDirections = new Set();
+  let state = createState(level), active = -1;
+  for (const direction of answer.directions) {
+    const box = neighbor(state.player, direction, level.width, level.height), result = move(level, state, direction);
+    if (result.pushed) {
+      const index = identities.get(box);
+      if (active !== index) { phases[index]++; active = index; }
+      identities.delete(box); identities.set(neighbor(box, direction, level.width, level.height), index);
+      pushDirections.add(direction);
+    }
+    state = result.state;
+  }
+  return phases.every(count => count >= 2) && phases.filter(count => count >= 3).length >= 3 && pushDirections.size >= 3;
 }
 
 export function validateLevel(level) {
   const area = level.width * level.height;
   const unique = values => new Set(values).size === values.length;
   const inside = position => Number.isInteger(position) && position >= 0 && position < area;
-  if (!Number.isInteger(level.width) || !Number.isInteger(level.height) || level.width < 4 || level.height < 4) return false;
+  // 经典集合包含三行窄廊；三格已能容纳两侧边墙和内部通道。
+  if (!Number.isInteger(level.width) || !Number.isInteger(level.height) || level.width < 3 || level.height < 3) return false;
   if (!unique(level.walls) || !unique(level.goals) || !unique(level.boxes)) return false;
   if (level.goals.length === 0 || level.goals.length !== level.boxes.length) return false;
   if (![...level.walls, ...level.goals, ...level.boxes, level.player].every(inside)) return false;
@@ -154,19 +92,36 @@ export function validateLevel(level) {
   return true;
 }
 
-export function generateLevel(id) {
-  const count = id <= 2 ? 1 : id <= 12 ? 2 : id <= 24 ? 3 : 4;
-  const target = id <= 2 ? id + 1 : id <= 12 ? 4 + Math.floor((id - 3) / 4) : id <= 24 ? 8 + Math.floor((id - 13) / 4) : 12;
-  const minMoves = id <= 2 ? 4 : id <= 12 ? 12 : id <= 24 ? 20 : 28;
-  const seed = (id * 2654435761) >>> 0;
-  const random = randomSource(seed);
-  for (let attempt = 0; attempt < 120; attempt++) {
-    const level = makeCandidate(id, seed, count, random);
-    if (!level || !validateLevel(level)) continue;
-    const answer = solve(level, createState(level));
-    if (!answer || answer.pushes < target || answer.directions.length < minMoves || level.boxes.some(box => level.goals.includes(box))) continue;
-    level.minPushes = answer.pushes;
-    return level;
+export function generateLevel(id, variant = 0) {
+  // 正式手工关与候选输出分离，重新生成候选不会覆盖精选的发布数据。
+  if (id <= 36) {
+    const level = levels[id - 1];
+    return variant === 0 ? structuredClone(level) : orient({ ...level, seed: (id * 2654435761 + variant * 1013904223) >>> 0 }, variant % 8);
   }
-  throw new Error(`第 ${id} 关生成失败`);
+  const template = endlessTemplate(id, variant), random = randomSource(template.seed);
+  // 同一机关和朝向再次出现时，交替使用坐标和为奇／偶数的起点组，避免第一轮与下一轮撞关。
+  const group = (Math.floor((id - 37) / (endlessTemplateCount * 8)) + variant) % 2;
+  const base = { ...template.level, ...template.starts[group], id, seed: template.seed };
+  const orientation = (Math.floor((id - 37) / endlessTemplateCount) + variant) % 8;
+  // 性能筛选限制随机候选计算，困难起点使用已离线证明的备用布局；提示仍保留完整预算。
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const raw = reverseStart(base, random);
+    if (raw.boxes.reduce((sum, box) => sum + box, 0) % 2 !== group) continue;
+    if (raw.boxes.join(',') === template.level.boxes.join(',')) continue;
+    const candidate = orient(raw, orientation);
+    let answer;
+    try {
+      answer = solve(candidate, createState(candidate), 12000);
+      if (!answer || answer.pushes < 25 || !involved(candidate, answer)) continue;
+      if (solveRestricted(candidate, createState(candidate), 'serial', 12000)) continue;
+      if (solveRestricted(candidate, createState(candidate), 'monotone', 12000)) continue;
+    } catch (error) {
+      // 随机起点可能超出筛选预算，只放弃该候选，绝不视为无解或策略验证通过。
+      if (error.message === '求解超出计算上限') continue;
+      throw error;
+    }
+    return { ...candidate, minPushes: answer.pushes };
+  }
+  // 预算内未选出起点时使用同机关已完整验关的起点，保证手机计算能结束；不会换掉署名来源。
+  return orient(base, orientation);
 }

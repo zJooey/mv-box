@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171827" />
+    <title>箱子探险队 · 策略关试玩</title>
+  </head>
+  <body class="strategy-preview">
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand"><div class="brand-mark">▣</div><div><span class="eyebrow">策略关 · 首批试玩</span><h1>箱子探险队</h1></div></div>
+        <a class="preview-back" href="/">返回正式游戏</a>
+      </header>
+      <nav class="preview-selector" aria-label="选择试玩关卡">
+        <button type="button" data-level="3">第 3 关 <small>2 箱</small></button>
+        <button type="button" data-level="12">第 12 关 <small>3 箱</small></button>
+        <button type="button" data-level="24">第 24 关 <small>4 箱</small></button>
+        <button type="button" data-level="36">第 36 关 <small>6 箱</small></button>
+      </nav>
+      <main class="main-layout">
+        <aside class="story-card">
+          <div class="chapter-badge">策略关试玩</div>
+          <h2 id="level-title">借位初试</h2>
+          <p class="story-copy" id="level-description"></p>
+          <div class="stat-row">
+            <div><span>步数</span><strong id="moves">0</strong></div>
+            <div><span>推动</span><strong id="pushes">0</strong></div>
+            <div><span>箱子</span><strong id="box-count">2</strong></div>
+          </div>
+          <p class="preview-note">四关自由切换，试玩不影响正式游戏进度。刷新后重新开始。</p>
+          <div class="preview-help">方向键 / WASD 移动<br />每局可撤销 3 次，重开恢复。</div>
+        </aside>
+        <section class="play-area" aria-label="游戏区域">
+          <div class="board-header"><div><span class="live-dot"></span><span id="board-label">第 3 关</span></div><span id="difficulty">借位机关</span></div>
+          <div class="board-frame"><div id="game-board" aria-label="推箱子棋盘"></div></div>
+          <div class="tile-legend" aria-label="棋盘图例"><span><i class="tile floor"></i>地板</span><span><i class="tile wall"></i>墙壁</span><span><i class="tile crate"></i>箱子</span><span><i class="tile target"></i>目标</span></div>
+          <div class="toolbar">
+            <div class="tool-group"><button class="tool-button" id="undo" type="button"><span>↶</span> 撤销</button><button class="tool-button" id="restart" type="button"><span>⟳</span> 重开</button></div>
+            <button class="tool-button hint-button" id="hint" type="button"><span>✧</span> 提示下一步</button>
+          </div>
+          <div class="mobile-controls" aria-label="移动方向">
+            <div class="direction-pad"><button data-direction="up" aria-label="向上移动">▲</button><div class="direction-bottom"><button data-direction="left" aria-label="向左移动">◀</button><button data-direction="down" aria-label="向下移动">▼</button><button data-direction="right" aria-label="向右移动">▶</button></div></div>
+          </div>
+        </section>
+      </main>
+      <p class="preview-credit" id="level-credit"></p>
+    </div>
+    <div id="win-overlay" class="win-overlay" hidden>
+      <div class="win-card"><div class="win-stars">◆ ★ ◆</div><span class="eyebrow">策略关完成</span><h2>找到解法了！</h2><p id="win-copy"></p><div class="win-actions"><button id="replay-level" class="button ghost-dark" type="button">再玩一次</button><button id="next-level" class="button primary" type="button">换一关 →</button></div></div>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <dialog id="restart-dialog" class="restart-dialog" aria-labelledby="restart-title" aria-describedby="restart-copy">
+      <span class="eyebrow">重新出发</span><h2 id="restart-title">确定重开本关？</h2>
+      <p id="restart-copy">本局步数和箱子位置将重置，撤销次数恢复为 3 次。</p>
+      <div class="restart-actions"><button id="cancel-restart" class="button ghost-dark" type="button" autofocus>取消</button><button id="confirm-restart" class="button primary" type="button">确认重开</button></div>
+    </dialog>
+    <script type="module" src="/src/strategy-preview.js"></script>
+  </body>
+</html>

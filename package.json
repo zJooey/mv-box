@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "test": "node --test",
     "generate:levels": "node scripts/generate-levels.js",
-    "validate:levels": "node scripts/validate-levels.js"
+    "validate:levels": "node scripts/validate-levels.js",
+    "validate:strategy": "node scripts/validate-strategy.js",
+    "import:classics": "node scripts/import-classics.js",
+    "validate:classics": "node --test tests/classic-levels.test.js"
   },
   "dependencies": {
     "phaser": "4.2.1"

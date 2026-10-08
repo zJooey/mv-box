@@ -13,7 +13,8 @@ export function neighbor(index, direction, width, height) {
 }
 
 export function createState(level) {
-  return { player: level.player, boxes: [...level.boxes].sort((a, b) => a - b), history: [], moves: 0, pushes: 0 };
+  // 撤销额度仅属于本局；重新开始、选关或刷新均创建一局，不写入进度存档。
+  return { player: level.player, boxes: [...level.boxes].sort((a, b) => a - b), history: [], moves: 0, pushes: 0, undosLeft: 3 };
 }
 
 export function move(level, state, direction) {
@@ -36,6 +37,7 @@ export function move(level, state, direction) {
   const updated = {
     player: next,
     boxes,
+    undosLeft: state.undosLeft,
     history: [...state.history, previous],
     moves: state.moves + 1,
     pushes: state.pushes + Number(pushed)
@@ -44,7 +46,8 @@ export function move(level, state, direction) {
 }
 
 export function undo(state) {
-  if (state.history.length === 0) return state;
+  if (state.history.length === 0 || state.undosLeft === 0) return state;
   const previous = state.history.at(-1);
-  return { ...previous, history: state.history.slice(0, -1) };
+  // 只回退局面，额度不随历史回退，防止移动后反复撤销获得无限次数。
+  return { ...previous, history: state.history.slice(0, -1), undosLeft: state.undosLeft - 1 };
 }

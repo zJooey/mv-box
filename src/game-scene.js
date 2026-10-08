@@ -34,30 +34,42 @@ export class GameScene extends Phaser.Scene {
     this.tweens.killAll();
     this.children.removeAll(true);
     this.boxSprites.clear();
-    const chapter = Math.min(2, Math.floor((this.level.id - 1) / 12));
+    const classic = Boolean(this.level.voids);
+    const chapter = classic ? 2 : Math.min(2, Math.floor((this.level.id - 1) / 12));
     const theme = themes[chapter];
-    this.cell = Math.floor(630 / Math.max(this.level.width, this.level.height));
-    this.originX = (720 - this.level.width * this.cell) / 2;
-    this.originY = (720 - this.level.height * this.cell) / 2;
+    // 大型原图沿用七十像素绘制单位，再由浏览器等比缩放；不把长条图塞入方形画布。
+    this.cell = classic ? 70 : Math.floor(630 / Math.max(this.level.width, this.level.height));
+    const canvasWidth = classic ? this.level.width * this.cell + 40 : 720;
+    const canvasHeight = classic ? this.level.height * this.cell + 40 : 720;
+    // 切关已更新父容器比例和最小宽度，先重读边界，防止 FIT 仍使用旧地图尺寸。
+    this.scale.getParentBounds();
+    this.scale.setGameSize(canvasWidth, canvasHeight);
+    this.originX = (canvasWidth - this.level.width * this.cell) / 2;
+    this.originY = (canvasHeight - this.level.height * this.cell) / 2;
 
     const backdrop = this.add.graphics();
     backdrop.fillStyle(theme.background, 1);
-    backdrop.fillRect(0, 0, 720, 720);
+    backdrop.fillRect(0, 0, canvasWidth, canvasHeight);
     backdrop.fillStyle(0x71809a, 0.15);
     for (let i = 0; i < 32; i++) {
       const x = (i * 137 + 43) % 720;
       const y = (i * 193 + 61) % 720;
       backdrop.fillRect(x, y, 3, 3);
     }
-    backdrop.fillStyle(0x090c17, 1);
-    backdrop.fillRect(this.originX - 14, this.originY - 14, this.cell * this.level.width + 28, this.cell * this.level.height + 28);
-    backdrop.fillStyle(theme.wallEdge, 1);
-    backdrop.fillRect(this.originX - 9, this.originY - 9, this.cell * this.level.width + 18, this.cell * this.level.height + 18);
+    if (!classic) {
+      backdrop.fillStyle(0x090c17, 1);
+      backdrop.fillRect(this.originX - 14, this.originY - 14, this.cell * this.level.width + 28, this.cell * this.level.height + 28);
+      backdrop.fillStyle(theme.wallEdge, 1);
+      backdrop.fillRect(this.originX - 9, this.originY - 9, this.cell * this.level.width + 18, this.cell * this.level.height + 18);
+    }
 
     const board = this.add.graphics();
     const wallSet = new Set(this.level.walls);
     const goalSet = new Set(this.level.goals);
+    const voidSet = new Set(this.level.voids || []);
     for (let index = 0; index < this.level.width * this.level.height; index++) {
+      // 地图外的空白仍在逻辑墙集合中，绘图跳过，保留原图的凹凸边界。
+      if (voidSet.has(index)) continue;
       const { x, y } = this.cellPosition(index);
       const left = x - this.cell / 2;
       const top = y - this.cell / 2;
@@ -139,7 +151,7 @@ export class GameScene extends Phaser.Scene {
     g.fillRect(7, -8, 5, 5);
     g.fillRect(-3, 2, 8, 3);
     g.setPosition(x, y);
-    // 保持角色在 7×7 与 9×9 地图中占据相近的格子比例。
+    // 保持角色在 7×7 到 10×10 地图中占据相近的格子比例。
     g.setScale(size / 70);
     return g;
   }
